@@ -1,0 +1,8 @@
+sounddevice
+SpeechRecognition
+numpy
+openai
+scipy
+pydub
+torch
+transformers
