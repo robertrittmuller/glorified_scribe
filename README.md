@@ -6,7 +6,7 @@ Glorified Scribe is a Python-based application that uses AI to automatically tra
 
 To use this tool, you'll need to have Python installed on your system. The script also uses several Python libraries, so make sure to install all dependencies using the following:
 
-To install a package, you can use pip:
+To install the required packages, you can use pip:
 ```bash
 pip install -r requirements.txt --upgrade
 ```
