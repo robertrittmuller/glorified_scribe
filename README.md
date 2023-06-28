@@ -1,6 +1,6 @@
 # Glorified Scribe
 
-Glorified Scribe is a Python-based application that uses AI to automatically transcribe speech and generate meeting notes. It uses a combination of speech recognition and natural language processing via the OpenAI API (using the gpt-3.5-turbo model) to achieve this.
+Glorified Scribe is a very simple Python-based application that uses AI to automatically transcribe speech and generate meeting notes. It uses a combination of speech recognition and natural language processing via the OpenAI API (using the gpt-3.5-turbo model) to achieve this.
 
 ## Getting Started
 
