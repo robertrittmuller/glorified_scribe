@@ -10,6 +10,8 @@ To install the required packages, you can use pip:
 ```bash
 pip install -r requirements.txt --upgrade
 ```
+**Please Note!** - An OpenAI API key is required to run this script if you wish to generate meeting notes! You can obtain an API key <a href="https://openai.com/blog/openai-api">here</a>.
+
 ## How to Run the `takenotes.py` Script
 The takenotes.py script can be run from the command line with various options. Here is the basic usage:
 
