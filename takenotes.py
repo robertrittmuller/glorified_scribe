@@ -16,7 +16,8 @@ from sys import platform  # to get the platform (OS) details
 # NLP / AI Configuration
 import module_nlp as nlp_engine
 ai = nlp_engine.nlp(openAI=True)
-ai.cleaning_command_text = "Please rewrite the partial meeting transcript according to the following rules: Always include first and last names of anyone who was introduced. \
+ai.cleaning_command_text = "Please rewrite the partial meeting transcript according to the following rules: Always include first and last names of \
+                            anyone who was introduced without infering gender. \
                             Include any relevant and accurate information such as names, places, and events identical to the transcript. \
                             but do not attempt to identify who is speaking or provide any summerization. \
                             Ensure that all output is very detailed and use 3rd person formal meeting notes style. Make sure to always include the first and last names of anyone mentioned \
@@ -25,7 +26,7 @@ ai.cleaning_command_text = "Please rewrite the partial meeting transcript accord
 
 
 ai.summerization_command_text = "Generate a detailed meeting summary for the following transcript that includes four sections: \
-                                up to ten meeting highlights in a bulleted list followed by any mentioned action items including who they \
+                                up to ten meeting highlights in a bulleted list followed by any possible action items including who they \
                                 were assigned to, a bulleted list of any introductions that includes full names (first name, last name), job title or education (if mentioned), \
                                 and a section that assigns and explains a humorous 'Meeting Score' based on how useful the meeting was \
                                 and on how much wasted time was spent in the meeting that's from 1 to 100."
