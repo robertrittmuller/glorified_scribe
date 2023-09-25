@@ -16,7 +16,17 @@ from sys import platform  # to get the platform (OS) details
 # NLP / AI Configuration
 import module_nlp as nlp_engine
 ai = nlp_engine.nlp(openAI=True)
-ai.cleaning_command_text = "Please rewrite the partial meeting transcript according to the following rules: Always include first and last names of \
+cleaning_prompt_teams = "Please rewrite the partial meeting transcript according to the following rules: \
+                            If names are in the following format 'Last, First (org)' reformat them to First Last. \
+                            Remove duplicate names and/or nicknames. Always include first and last names of \
+                            anyone who was introduced without infering gender. Ignore timestamps, and do not include them in output. \
+                            Include any relevant and accurate information such as names, places, and events identical to the transcript. \
+                            but do not attempt to identify who is speaking or provide any summerization. Output should be fewer words than the input.\
+                            Ensure that all output uses 3rd person formal meeting notes style. Make sure to always include the first and last names of anyone mentioned \
+                            in the transcript. Include all relevant and accurate information such as names, places, and events identical to the transcript. \
+                            Always include full names, titles, and any other details for anyone mentioned in the transcript, do not use just first names! \
+                            "
+cleaning_prompt_default = "Please rewrite the partial meeting transcript according to the following rules: Always include first and last names of \
                             anyone who was introduced without infering gender. \
                             Include any relevant and accurate information such as names, places, and events identical to the transcript. \
                             but do not attempt to identify who is speaking or provide any summerization. \
@@ -25,9 +35,16 @@ ai.cleaning_command_text = "Please rewrite the partial meeting transcript accord
                             Always include full names, titles, and any other details for anyone mentioned in the transcript, do not use first names!"
 
 
-ai.summerization_command_text = "Generate a detailed meeting summary for the following transcript that includes four sections: \
+summerization_prompt_default = "Generate a detailed meeting summary for the following transcript that includes four sections: \
                                 up to ten meeting highlights in a bulleted list followed by any possible action items including who they \
                                 were assigned to, a bulleted list of any introductions that includes full names (first name, last name), job title or education (if mentioned), \
+                                and a section that assigns and explains a humorous 'Meeting Score' based on how useful the meeting was \
+                                and on how much wasted time was spent in the meeting that's from 1 to 100."
+
+summerization_prompt_teams = "Generate a detailed meeting summary for the following transcript that includes four sections: \
+                                up to ten meeting highlights in a bulleted list followed by any possible action items including who they \
+                                were assigned to, a bulleted list of meeting attendees, noting who was formally introduced, that includes \
+                                full names (first name, last name), job title or education (if mentioned), \
                                 and a section that assigns and explains a humorous 'Meeting Score' based on how useful the meeting was \
                                 and on how much wasted time was spent in the meeting that's from 1 to 100."
 
@@ -86,6 +103,8 @@ def main():
     parser.add_argument("--model", default="medium", help="Model to use", choices=["tiny", "base", "small", "medium", "large"])
     # Flag for if you want to process a file using the AI only, no live transcription
     parser.add_argument("--file", default="", help="File to process")
+    # Flag for if the input file is from Microsoft Teams (transcript format)
+    parser.add_argument("--teams", action='store_true', help="Input file is a Microsoft Teams transcript.")
     # Flag for whether to use the non-English model
     parser.add_argument("--non_english", action='store_true', help="Don't use the english model.")
     # Setting up energy level for microphone to detect, default as 1000
@@ -101,7 +120,16 @@ def main():
     
     # Parse command line arguments
     args = parser.parse_args()
-    
+
+    # setup prompts based on command line toggles
+    if(args.teams == True):
+        ai.cleaning_command_text = cleaning_prompt_teams
+        ai.summerization_command_text = summerization_prompt_teams
+        print('Processing as a Microsoft Teams transcript...')
+    else:
+        ai.cleaning_command_text = cleaning_prompt_default
+        ai.summerization_command_text = summerization_prompt_default
+
     # Initialize variables
     phrase_time = None  # last time a recording was retrieved from the queue
     last_sample = bytes()  # current raw audio bytes

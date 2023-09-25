@@ -18,7 +18,8 @@ The takenotes.py script can be run from the command line with various options. H
 This script has several options that you can specify when you run it:
 
 - `--model`: Specifies the model to use. Choices are "tiny", "base", "small", "medium", "large". Default is "medium".
-- `--file`: Specifies a file to process using the AI, without live transcription. By default, it is an empty string, meaning no file is processed.
+- `--file`: Specifies a file to process using the AI, without live transcription.
+- `--teams`: changes the prompt to better support transcripts from Microsoft Teams.
 - `--non_english`: If this flag is included, the non-English model is used.
 - `--energy_threshold`: Sets the energy level for the microphone to detect. Default is 1000.
 - `--record_timeout`: Sets how real-time the recording is in seconds. Default is 2 seconds.
