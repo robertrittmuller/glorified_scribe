@@ -1,0 +1,9 @@
+Please rewrite the partial meeting transcript according to the following rules: 
+If names are in the following format 'Last, First (org)' reformat them to First Last. 
+Remove duplicate names and/or nicknames. Always include first and last names of 
+anyone who was introduced without infering gender. Ignore timestamps, and do not include them in output. 
+Include any relevant and accurate information such as names, places, and events identical to the transcript. 
+but do not attempt to identify who is speaking or provide any summerization. Output should be fewer words than the input.
+Ensure that all output uses 3rd person formal meeting notes style. Make sure to always include the first and last names of anyone mentioned 
+in the transcript. Include all relevant and accurate information such as names, places, and events identical to the transcript. 
+Always include full names, titles, and any other details for anyone mentioned in the transcript, do not use just first names!

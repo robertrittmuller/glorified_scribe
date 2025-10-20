@@ -6,34 +6,31 @@ import os
 import platform
 import json
 import unicodedata
-import openai
+from dotenv import load_dotenv
+from litellm import completion
 
 class nlp(object):
 
     # OpenAI API Settings
     isOpenAI_API = False                            # controls if the OpenAI API is used vs. local Huggingface models
-    generative_model = "gpt-3.5-turbo"
-    max_number_of_retries = 3
-    openai_model_token_limit = 950
+    generative_model = os.getenv("GENERATIVE_MODEL", "gpt-3.5-turbo")
+    max_number_of_retries = int(os.getenv("MAX_NUMBER_OF_RETRIES", "3"))
+    openai_model_token_limit = int(os.getenv("OPENAI_MODEL_TOKEN_LIMIT", "950"))
 
     # OpenAI classification settings
-    classifier_command_text =   'You are a simple text classification system. Only return output in JSON with confidence scores for only the given categories. \
-                                Do not explain your answer and do not include any other text. \
-                                Always use the following JSON format for your output: "{"labels": ["supervised learning", "natural language processing", "computer vision"], "scores": [0.40503641963005066, 0.301205575466156, 0.29375800490379333]}"' 
-    cleaning_command_text =     "You are a simple text cleaning system. Remove any HTML, Javascript, advertising copy, web page navigation text, and other \
-                            non-textual elements from the provided text. Make sure to include the author's name and the date when it was published if possible. \
-                            Return the cleaned text using JSON using an element named 'cleaned_text'"
+    classifier_command_text = "" 
+    cleaning_command_text = ""
 
-    summerization_command_text = "Summerize the following text."
+    summerization_command_text = ""
 
     # Common cleaning settings
-    cleaning_token_limit = openai_model_token_limit         # smaller chunks work better
+    cleaning_token_limit = int(os.getenv("CLEANING_TOKEN_LIMIT", str(openai_model_token_limit)))         # smaller chunks work better
 
     # Common Summerization settings
-    summerization_token_limit = openai_model_token_limit    # this is the max size text chunk you can pass to the model
-    summerization_input_min = 150                           # minimum number of words for a summary
-    summerization_response_max = 1500                       # limit to under this number of words
-    summerization_response_min = 100                        # minimum number of words for the summary
+    summerization_token_limit = int(os.getenv("SUMMERIZATION_TOKEN_LIMIT", str(openai_model_token_limit)))    # this is the max size text chunk you can pass to the model
+    summerization_input_min = int(os.getenv("SUMMERIZATION_INPUT_MIN", "150"))                           # minimum number of words for a summary
+    summerization_response_max = int(os.getenv("SUMMERIZATION_RESPONSE_MAX", "1500"))                       # limit to under this number of words
+    summerization_response_min = int(os.getenv("SUMMERIZATION_RESPONSE_MIN", "100"))                        # minimum number of words for the summary
 
     # GPU settings
     is_gpu_available = False                        # controls if GPU is available
@@ -51,6 +48,12 @@ class nlp(object):
 
     def __init__(self, openAI=False):
         
+        # Load environment variables from .env file
+        load_dotenv()
+        
+        # Load prompts from files
+        self.load_prompts()
+        
         # Let's handle some GPU initalization
         if(self.is_macos_arm64()):
             self.device = torch.device("mps")
@@ -60,7 +63,6 @@ class nlp(object):
 
         # setup API key
         if(openAI == True):
-            openai.api_key = os.environ.get("OPENAI_API_KEY")
             self.isOpenAI_API = True
         else:
             # set the classifier to be a zero-shot model and use the default pipeline
@@ -69,6 +71,32 @@ class nlp(object):
             # setup summarization model
             self.summerizer = pipeline(self.summerization_pipeline, model=self.summerization_model, device=self.device)
     
+    def load_prompts(self):
+        """Load all prompts from the prompts folder"""
+        prompts_dir = os.path.join(os.path.dirname(__file__), 'prompts')
+        
+        # Load classifier command
+        with open(os.path.join(prompts_dir, 'classifier_command.txt'), 'r') as f:
+            self.classifier_command_text = f.read().strip()
+        
+        # Load cleaning command
+        with open(os.path.join(prompts_dir, 'cleaning_command.txt'), 'r') as f:
+            self.cleaning_command_text = f.read().strip()
+        
+        # Load summerization command
+        with open(os.path.join(prompts_dir, 'summerization_command.txt'), 'r') as f:
+            self.summerization_command_text = f.read().strip()
+    
+    def get_prompt(self, prompt_name):
+        """Get a specific prompt by name"""
+        prompts_dir = os.path.join(os.path.dirname(__file__), 'prompts')
+        prompt_file = os.path.join(prompts_dir, f'{prompt_name}.txt')
+        
+        if os.path.exists(prompt_file):
+            with open(prompt_file, 'r') as f:
+                return f.read().strip()
+        return None
+
     def setup(self):
         # used during container configuration and setup
         
@@ -84,7 +112,7 @@ class nlp(object):
         return system == "Darwin" and processor == "arm"
 
     def submit_openai_request(self, messages, is_json=False):
-        # wrapper to handle errors and retries for the openAI API
+        # wrapper to handle errors and retries for the OpenAI API using liteLLM
         attempts = 0
         success = False
         response = None  # Initializing with a default value
@@ -92,7 +120,7 @@ class nlp(object):
             attempts += 1
             try:
                 print("Submitting API Request (Attempt #" + str(attempts) + ")")
-                response = openai.ChatCompletion.create(model=self.generative_model, messages=messages)['choices'][0]['message']['content']
+                response = completion(model=self.generative_model, messages=messages)['choices'][0]['message']['content']
                 success = True
             except Exception as e:
                 print("OPENAI CONNECTION ERROR:", str(e))
@@ -252,7 +280,7 @@ class nlp(object):
         return self.submit_openai_request([setup_command, request])
 
     def openai_simple_summerization(self, text):
-        # Now let's summerize the text
+        # Now let's summerize the text using liteLLM
 
         text = self.fix_rogue_spaces(text)
 
@@ -267,7 +295,7 @@ class nlp(object):
                 'content': f'Summarize the following text in under {self.summerization_response_max} words and no less than {self.summerization_response_min} words: {text}'
                 }
 
-        results = openai.ChatCompletion.create(model=self.generative_model, messages=[request])
+        results = completion(model=self.generative_model, messages=[request])
         summary_results = results['choices'][0]['message']['content']
 
         return summary_results

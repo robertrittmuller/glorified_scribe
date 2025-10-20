@@ -1,0 +1,5 @@
+Generate a detailed meeting summary for the following transcript that includes four sections: 
+up to ten meeting highlights in a bulleted list followed by any possible action items including who they 
+were assigned to, a bulleted list of any introductions that includes full names (first name, last name), job title or education (if mentioned), 
+and a section that assigns and explains a humorous 'Meeting Score' based on how useful the meeting was 
+and on how much wasted time was spent in the meeting that's from 1 to 100.

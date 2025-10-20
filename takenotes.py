@@ -7,7 +7,7 @@ import whisper  # for transcription
 import torch  # for data processing and deep learning tasks
 import uuid  # for generating unique ID
 
-from datetime import datetime, timedelta  # for tracking time
+from datetime import datetime, timedelta, timezone  # for tracking time
 from queue import Queue  # for data transfer between threads
 from tempfile import NamedTemporaryFile  # to create temporary files
 from time import sleep  # to pause execution of the program
@@ -15,38 +15,12 @@ from sys import platform  # to get the platform (OS) details
 
 # NLP / AI Configuration
 import module_nlp as nlp_engine
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 ai = nlp_engine.nlp(openAI=True)
-cleaning_prompt_teams = "Please rewrite the partial meeting transcript according to the following rules: \
-                            If names are in the following format 'Last, First (org)' reformat them to First Last. \
-                            Remove duplicate names and/or nicknames. Always include first and last names of \
-                            anyone who was introduced without infering gender. Ignore timestamps, and do not include them in output. \
-                            Include any relevant and accurate information such as names, places, and events identical to the transcript. \
-                            but do not attempt to identify who is speaking or provide any summerization. Output should be fewer words than the input.\
-                            Ensure that all output uses 3rd person formal meeting notes style. Make sure to always include the first and last names of anyone mentioned \
-                            in the transcript. Include all relevant and accurate information such as names, places, and events identical to the transcript. \
-                            Always include full names, titles, and any other details for anyone mentioned in the transcript, do not use just first names! \
-                            "
-cleaning_prompt_default = "Please rewrite the partial meeting transcript according to the following rules: Always include first and last names of \
-                            anyone who was introduced without infering gender. \
-                            Include any relevant and accurate information such as names, places, and events identical to the transcript. \
-                            but do not attempt to identify who is speaking or provide any summerization. \
-                            Ensure that all output is very detailed and use 3rd person formal meeting notes style. Make sure to always include the first and last names of anyone mentioned \
-                            in the transcript. Include all relevant and accurate information such as names, places, and events identical to the transcript. \
-                            Always include full names, titles, and any other details for anyone mentioned in the transcript, do not use first names!"
-
-
-summerization_prompt_default = "Generate a detailed meeting summary for the following transcript that includes four sections: \
-                                up to ten meeting highlights in a bulleted list followed by any possible action items including who they \
-                                were assigned to, a bulleted list of any introductions that includes full names (first name, last name), job title or education (if mentioned), \
-                                and a section that assigns and explains a humorous 'Meeting Score' based on how useful the meeting was \
-                                and on how much wasted time was spent in the meeting that's from 1 to 100."
-
-summerization_prompt_teams = "Generate a detailed meeting summary for the following transcript that includes four sections: \
-                                up to ten meeting highlights in a bulleted list followed by any possible action items including who they \
-                                were assigned to, a bulleted list of meeting attendees, noting who was formally introduced, that includes \
-                                full names (first name, last name), job title or education (if mentioned), \
-                                and a section that assigns and explains a humorous 'Meeting Score' based on how useful the meeting was \
-                                and on how much wasted time was spent in the meeting that's from 1 to 100."
 
 # helper functions
 def save_transcription(transcription, file_stub="transcript"):
@@ -123,12 +97,12 @@ def main():
 
     # setup prompts based on command line toggles
     if(args.teams == True):
-        ai.cleaning_command_text = cleaning_prompt_teams
-        ai.summerization_command_text = summerization_prompt_teams
+        ai.cleaning_command_text = ai.get_prompt('cleaning_prompt_teams')
+        ai.summerization_command_text = ai.get_prompt('summerization_prompt_teams')
         print('Processing as a Microsoft Teams transcript...')
     else:
-        ai.cleaning_command_text = cleaning_prompt_default
-        ai.summerization_command_text = summerization_prompt_default
+        ai.cleaning_command_text = ai.get_prompt('cleaning_prompt_default')
+        ai.summerization_command_text = ai.get_prompt('summerization_prompt_default')
 
     # Initialize variables
     phrase_time = None  # last time a recording was retrieved from the queue
@@ -189,7 +163,7 @@ def main():
     if(args.file == ""):
         while True:
             try:
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
                 # If data available in the queue, process it
                 if not data_queue.empty():
                     phrase_complete = False  # Flag to track if phrase is complete

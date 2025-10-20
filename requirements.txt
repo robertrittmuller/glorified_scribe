@@ -1,8 +1,12 @@
 sounddevice
 SpeechRecognition
-numpy==1.24
+numpy
 openai
 scipy
 pydub
 torch
 transformers
+litellm
+python-dotenv
+openai-whisper
+pyaudio
