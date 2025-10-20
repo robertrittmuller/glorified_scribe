@@ -1,40 +1,126 @@
 # Glorified Scribe
 
-Glorified Scribe is a very simple Python-based application that uses AI to automatically transcribe speech and generate meeting notes. It uses a combination of speech recognition and natural language processing via the OpenAI API (using the gpt-3.5-turbo model) to achieve this.
+Glorified Scribe is a Python-based application that uses AI to automatically transcribe speech and generate intelligent meeting notes. It combines real-time speech recognition using OpenAI's Whisper models with natural language processing via the OpenAI API (using the gpt-3.5-turbo model) to provide comprehensive meeting documentation.
 
 ## Getting Started
 
-To use this tool, you'll need to have Python installed on your system. The script also uses several Python libraries, so make sure to install all dependencies using the following:
+To use this tool, you'll need to have Python installed on your system. The application uses several Python libraries including OpenAI's Whisper for speech recognition and the OpenAI API for intelligent text processing.
 
-To install the required packages, you can use pip:
+### Prerequisites
+
+- Python 3.7 or higher
+- OpenAI API key (required for AI-powered features)
+- Microphone (for live transcription)
+
+### Installation
+
+1. Clone or download this repository
+2. Install the required packages:
 ```bash
 pip install -r requirements.txt --upgrade
 ```
-**Please Note!** - An OpenAI API key is required to run this script if you wish to generate meeting notes! You can obtain an API key <a href="https://openai.com/blog/openai-api">here</a>.
 
-## How to Run the `takenotes.py` Script
-The takenotes.py script can be run from the command line with various options. Here is the basic usage:
-
-This script has several options that you can specify when you run it:
-
-- `--model`: Specifies the model to use. Choices are "tiny", "base", "small", "medium", "large". Default is "medium".
-- `--file`: Specifies a file to process using the AI, without live transcription.
-- `--teams`: changes the prompt to better support transcripts from Microsoft Teams.
-- `--non_english`: If this flag is included, the non-English model is used.
-- `--energy_threshold`: Sets the energy level for the microphone to detect. Default is 1000.
-- `--record_timeout`: Sets how real-time the recording is in seconds. Default is 2 seconds.
-- `--phrase_timeout`: Sets how much empty space between recordings before it is considered a new line in the transcription. Default is 3 seconds.
-- `--default_microphone`: (Linux only) Specifies the default microphone name for SpeechRecognition. Default is 'pulse'.
-
-An example of running the script with options would be:
-
+3. Set your OpenAI API key as an environment variable:
+```bash
+export OPENAI_API_KEY="your-api-key-here"
 ```
-python takenotes.py --model large --file myfile.txt --non_english --energy_threshold 2000
-```
-This would run the script using the "large" model, process the "myfile.txt" file, use the non-English model, and set the energy threshold for the microphone to 2000.
 
-## Transcription and Summary Generation
-The script automatically generates a transcription of the speech it hears and saves it as a text file. The script does not automaticlly process the transcript. If you run the script using the `--file` parameter then the selected file is processed by the AI to clean and summarize the content, and then saved as separate "cleaned" and "summary" text files.
+**Important:** An OpenAI API key is required for AI-powered meeting notes generation. You can obtain an API key <a href="https://openai.com/blog/openai-api">here</a>.
+
+## Usage
+
+The `takenotes.py` script can be run in two modes: live transcription or file processing.
+
+### Live Transcription Mode (Default)
+
+For real-time speech transcription during meetings:
+
+```bash
+python takenotes.py
+```
+
+### File Processing Mode
+
+To process existing transcript files with AI-powered cleaning and summarization:
+
+```bash
+python takenotes.py --file myfile.txt
+```
+
+### Command Line Options
+
+- `--model`: Whisper model to use. Choices: "tiny", "base", "small", "medium", "large". Default: "medium"
+- `--file`: Path to a transcript file to process (bypasses live transcription)
+- `--teams`: Optimize processing for Microsoft Teams transcript format
+- `--non_english`: Use non-English Whisper models
+- `--energy_threshold`: Microphone sensitivity level (default: 1000)
+- `--record_timeout`: Real-time recording sensitivity in seconds (default: 2.0)
+- `--phrase_timeout`: Silence duration before new transcription line (default: 3.0)
+- `--default_microphone`: (Linux only) Specify microphone device name
+
+### Example Usage
+
+```bash
+# Live transcription with large model and higher sensitivity
+python takenotes.py --model large --energy_threshold 500
+
+# Process a Microsoft Teams transcript
+python takenotes.py --file teams_meeting.txt --teams
+
+# Process a non-English transcript
+python takenotes.py --file meeting_es.txt --non_english
+```
+
+## Features
+
+### Live Transcription
+- Real-time speech-to-text using OpenAI's Whisper models
+- Automatic phrase detection and segmentation
+- Configurable sensitivity and timing parameters
+- Support for multiple Whisper model sizes (tiny to large)
+
+### AI-Powered Processing
+When processing files (or transcripts with sufficient content), the application generates:
+
+1. **Cleaned Transcript**: Removes artifacts, formats names properly, and converts to formal meeting notes style
+2. **Intelligent Summary**: Includes:
+   - Up to 10 key meeting highlights (bulleted)
+   - Action items with assigned responsibilities
+   - Attendee introductions with full names and titles
+   - Humorous "Meeting Score" (1-100) evaluating meeting effectiveness
+
+### Microsoft Teams Support
+Special handling for Teams transcripts with:
+- Name format normalization ("Last, First (org)" → "First Last")
+- Duplicate name removal
+- Attendee list generation
+
+### Output Files
+The application generates timestamped files:
+- `transcript-{timestamp}-{uuid}.txt`: Raw transcription
+- `cleaned-{timestamp}-{uuid}.txt`: AI-cleaned transcript
+- `summary-{timestamp}-{uuid}.txt`: Comprehensive meeting summary
+
+## Technical Details
+
+### Architecture
+- **Speech Recognition**: OpenAI Whisper models with GPU acceleration support (including Apple Silicon MPS)
+- **Natural Language Processing**: OpenAI GPT-3.5-turbo for intelligent text processing
+- **Audio Processing**: SpeechRecognition library with configurable microphone settings
+
+### Supported Platforms
+- macOS (including Apple Silicon)
+- Linux (with microphone device selection)
+- Windows
+
+### Dependencies
+- `openai`: OpenAI API integration
+- `whisper`: Speech recognition models
+- `torch`: Deep learning framework
+- `transformers`: NLP model support
+- `SpeechRecognition`: Audio input handling
+- `sounddevice`: Audio device management
+- `numpy`, `scipy`, `pydub`: Audio processing
 
 ## License
 Please see the <a href="LICENSE">LICENSE</a> file for details on how you can use and distribute this software.
