@@ -160,5 +160,6 @@ cython_debug/
 #.idea/
 
 # repository specific
+output/
 data/
 .DS_Store
