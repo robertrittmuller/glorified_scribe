@@ -8,26 +8,34 @@ import json
 import unicodedata
 from dotenv import load_dotenv
 from litellm import completion
+import litellm
+
+# Enable debug logging for troubleshooting if enabled in .env
+if os.getenv("LITELLM_DEBUG", "false").lower() in ["true", "1", "yes", "on"]:
+    litellm._turn_on_debug()
+    print("LiteLLM debugging enabled")
+else:
+    print("LiteLLM debugging disabled")
 
 class nlp(object):
 
-    # OpenAI API Settings
-    isOpenAI_API = False                            # controls if the OpenAI API is used vs. local Huggingface models
+    # LiteLLM API Settings
+    isLiteLLM_API = False                            # controls if the LiteLLM API is used vs. local Huggingface models
     generative_model = os.getenv("GENERATIVE_MODEL", "gpt-3.5-turbo")
     max_number_of_retries = int(os.getenv("MAX_NUMBER_OF_RETRIES", "3"))
-    openai_model_token_limit = int(os.getenv("OPENAI_MODEL_TOKEN_LIMIT", "950"))
+    litellm_model_token_limit = int(os.getenv("LITELLM_MODEL_TOKEN_LIMIT", "950"))
 
-    # OpenAI classification settings
+    # LiteLLM classification settings
     classifier_command_text = "" 
     cleaning_command_text = ""
 
     summerization_command_text = ""
 
     # Common cleaning settings
-    cleaning_token_limit = int(os.getenv("CLEANING_TOKEN_LIMIT", str(openai_model_token_limit)))         # smaller chunks work better
+    cleaning_token_limit = int(os.getenv("CLEANING_TOKEN_LIMIT", str(litellm_model_token_limit)))         # smaller chunks work better
 
     # Common Summerization settings
-    summerization_token_limit = int(os.getenv("SUMMERIZATION_TOKEN_LIMIT", str(openai_model_token_limit)))    # this is the max size text chunk you can pass to the model
+    summerization_token_limit = int(os.getenv("SUMMERIZATION_TOKEN_LIMIT", str(litellm_model_token_limit)))    # this is the max size text chunk you can pass to the model
     summerization_input_min = int(os.getenv("SUMMERIZATION_INPUT_MIN", "150"))                           # minimum number of words for a summary
     summerization_response_max = int(os.getenv("SUMMERIZATION_RESPONSE_MAX", "1500"))                       # limit to under this number of words
     summerization_response_min = int(os.getenv("SUMMERIZATION_RESPONSE_MIN", "100"))                        # minimum number of words for the summary
@@ -51,6 +59,34 @@ class nlp(object):
         # Load environment variables from .env file
         load_dotenv()
         
+        # Configure LiteLLM base URL if provided
+        litellm_base_url = os.getenv("LITELLM_BASE")
+        if litellm_base_url:
+            litellm.api_base = litellm_base_url
+        
+        # Configure LiteLLM API key if provided
+        litellm_api_key = os.getenv("LITELLM_API_KEY")
+        print(f"DEBUG: LITELLM_API_KEY from env: {litellm_api_key}")
+        
+        # For LM Studio, we can use any value (including "none") or skip API key entirely
+        if litellm_api_key and litellm_api_key != "your_openai_api_key_here":
+            litellm.api_key = litellm_api_key
+            # Also set as environment variable for litellm to pick up
+            os.environ["LITELLM_API_KEY"] = litellm_api_key
+            print(f"DEBUG: Set litellm.api_key to: {litellm_api_key}")
+            
+            # Also try setting OPENAI_API_KEY as fallback since litellm often looks for this
+            os.environ["OPENAI_API_KEY"] = litellm_api_key
+            print("DEBUG: Also set OPENAI_API_KEY as fallback")
+        else:
+            print("DEBUG: LITELLM_API_KEY is not set or is placeholder, LM Studio may not require API key")
+            # For LM Studio, set a dummy API key if none is provided
+            dummy_key = "lm-studio-key"
+            litellm.api_key = dummy_key
+            os.environ["LITELLM_API_KEY"] = dummy_key
+            os.environ["OPENAI_API_KEY"] = dummy_key
+            print("DEBUG: Set dummy API key for LM Studio compatibility")
+        
         # Load prompts from files
         self.load_prompts()
         
@@ -63,7 +99,7 @@ class nlp(object):
 
         # setup API key
         if(openAI == True):
-            self.isOpenAI_API = True
+            self.isLiteLLM_API = True
         else:
             # set the classifier to be a zero-shot model and use the default pipeline
             self.classifier = pipeline(self.classification_pipeline, model=self.classification_model, device=self.device)
@@ -111,29 +147,49 @@ class nlp(object):
 
         return system == "Darwin" and processor == "arm"
 
-    def submit_openai_request(self, messages, is_json=False):
-        # wrapper to handle errors and retries for the OpenAI API using liteLLM
+    def submit_litellm_request(self, messages, is_json=False):
+        # wrapper to handle errors and retries for the LiteLLM API using liteLLM
         attempts = 0
         success = False
         response = None  # Initializing with a default value
+        
+        # Get API key for explicit passing
+        api_key = os.getenv("LITELLM_API_KEY")
+        print(f"DEBUG: submit_litellm_request - api_key: {api_key}")
+        
         while not success and attempts <= self.max_number_of_retries:
             attempts += 1
             try:
                 print("Submitting API Request (Attempt #" + str(attempts) + ")")
-                response = completion(model=self.generative_model, messages=messages)['choices'][0]['message']['content']
-                success = True
+                # For LM Studio, always pass the API key (even if it's "none" or a dummy value)
+                completion_kwargs = {
+                    "model": self.generative_model, 
+                    "messages": messages,
+                    "api_key": api_key  # LM Studio accepts any value
+                }
+                print(f"DEBUG: Passing api_key '{api_key}' for LM Studio compatibility")
+                
+                api_response = completion(**completion_kwargs)
+                if api_response and 'choices' in api_response and len(api_response['choices']) > 0:
+                    response = api_response['choices'][0]['message']['content']
+                    success = True
+                else:
+                    print("Invalid API response format")
             except Exception as e:
-                print("OPENAI CONNECTION ERROR:", str(e))
+                print("LITELLM CONNECTION ERROR:", str(e))
                 # Handle the error appropriately
+                if attempts >= self.max_number_of_retries:
+                    print("Max retries reached. Returning None.")
+                    return None
         
         # attempt to JSON decode it
-        if is_json:
+        if is_json and response is not None:
             try:
                 response = json.loads(response)
             except:
                 print("JSON DECODE ERROR: ",response)
         
-        print("OpenAI Response:", response)
+        print("LiteLLM Response:", response)
         return response
     
     def num_words(self, text):
@@ -220,19 +276,19 @@ class nlp(object):
 
     def classification(self, sequence_to_classify, filter_labels):
         sequence_to_classify = self.preprocess_text(sequence_to_classify)
-        if(self.isOpenAI_API == True):
-            # submit the request to the OpenAI API
-            return self.openai_classification(sequence_to_classify, filter_labels)
+        if(self.isLiteLLM_API == True):
+            # submit the request to the LiteLLM API
+            return self.litellm_classification(sequence_to_classify, filter_labels)
         else:
             # Classify the text using multiple sets of labels. 
             return self.classifier(sequence_to_classify, filter_labels)
 
     def summerization(self, text):
-        # summerize the text using either a local model or the OpenAI API
+        # summerize the text using either a local model or the LiteLLM API
         text = self.preprocess_text(text)
-        if(self.isOpenAI_API == True):
-            # submit the request to the OpenAI API
-            summerization_results = self.openai_simple_summerization(text)
+        if(self.isLiteLLM_API == True):
+            # submit the request to the LiteLLM API
+            summerization_results = self.litellm_simple_summerization(text)
         else:
             if(len(text) >= self.summerization_token_limit):
                 summerization_results = self.summerizer(text[0:self.summerization_token_limit])[0]['summary_text'] 
@@ -241,12 +297,12 @@ class nlp(object):
 
         return self.fix_rogue_spaces(summerization_results)
 
-    def openai_cleaning(self, sequence_to_clean):
+    def litellm_cleaning(self, sequence_to_clean):
         # simple process to clean up text that has been scrapped from web pages and/or PDF files.
         results = ""
         # if text is larger than the max input, split it into chunks and submit each chunk individually
         if(self.num_words(sequence_to_clean) > self.cleaning_token_limit):
-            chunks = self.get_chunks(self.openai_model_token_limit, sequence_to_clean, self.cleaning_command_text)
+            chunks = self.get_chunks(self.litellm_model_token_limit, sequence_to_clean, self.cleaning_command_text)
         else:
             chunks = [sequence_to_clean]
         
@@ -259,13 +315,16 @@ class nlp(object):
                 'role': 'user',
                 'content': f'Process the following text:{chunk}'
             }        
-            response = self.submit_openai_request([setup_command, request])
-            response += ' '
-            results += response
+            response = self.submit_litellm_request([setup_command, request])
+            if response is not None:
+                response += ' '
+                results += response
+            else:
+                print("Warning: Received None response from API for cleaning chunk")
         
         return results
     
-    def openai_classification(self, sequence_to_classify, filter_labels):
+    def litellm_classification(self, sequence_to_classify, filter_labels):
 
         # Classify the text using multiple sets of labels. 
         setup_command = {
@@ -277,9 +336,9 @@ class nlp(object):
             'content': f'Classify the following text into these categories ({filter_labels}) {sequence_to_classify}, sorting by score.'
 
         }
-        return self.submit_openai_request([setup_command, request])
+        return self.submit_litellm_request([setup_command, request])
 
-    def openai_simple_summerization(self, text):
+    def litellm_simple_summerization(self, text):
         # Now let's summerize the text using liteLLM
 
         text = self.fix_rogue_spaces(text)
@@ -295,12 +354,23 @@ class nlp(object):
                 'content': f'Summarize the following text in under {self.summerization_response_max} words and no less than {self.summerization_response_min} words: {text}'
                 }
 
-        results = completion(model=self.generative_model, messages=[request])
+        # Get API key for explicit passing
+        api_key = os.getenv("LITELLM_API_KEY")
+        
+        # For LM Studio, always pass the API key (even if it's "none" or a dummy value)
+        completion_kwargs = {
+            "model": self.generative_model, 
+            "messages": [request],
+            "api_key": api_key  # LM Studio accepts any value
+        }
+        print(f"DEBUG: Simple summerization - Passing api_key '{api_key}' for LM Studio")
+        
+        results = completion(**completion_kwargs)
         summary_results = results['choices'][0]['message']['content']
 
         return summary_results
     
-    def openai_summerization(self, text):
+    def litellm_summerization(self, text):
         # Now let's summerize the text
 
         text = self.fix_rogue_spaces(text)
@@ -315,4 +385,4 @@ class nlp(object):
             'content': f'Summarize the following text : {text}'
             }
 
-        return self.submit_openai_request([setup_command, request])
+        return self.submit_litellm_request([setup_command, request])
