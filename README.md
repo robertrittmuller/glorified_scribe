@@ -1,6 +1,6 @@
 # Glorified Scribe
 
-Glorified Scribe is a Python-based application that uses AI to automatically transcribe speech and generate intelligent meeting notes. It combines real-time speech recognition using OpenAI's Whisper models with natural language processing via the OpenAI API (using the gpt-3.5-turbo model) to provide comprehensive meeting documentation.
+Glorified Scribe is a Python-based application that uses AI to automatically transcribe speech and generate intelligent meeting notes. It combines real-time speech recognition using OpenAI's Whisper models with natural language processing via LiteLLM (supporting multiple LLM providers including OpenAI, LM Studio, and others) to provide comprehensive meeting documentation.
 
 ## Getting Started
 
@@ -9,7 +9,7 @@ To use this tool, you'll need to have Python installed on your system, along wit
 ### Prerequisites
 
 - Python 3.7 or higher
-- OpenAI API key (required for AI-powered features)
+- LiteLLM API key or compatible LLM provider setup (required for AI-powered features)
 - Microphone (for live transcription)
 - FFmpeg (required for audio processing)
 - PortAudio (required for PyAudio on macOS)
@@ -56,25 +56,30 @@ cp .env.example .env
 
 # Edit .env file with your API key and configuration
 # Or set the environment variable directly:
-export OPENAI_API_KEY="your-api-key-here"
+export LITELLM_API_KEY="your-api-key-here"
 ```
 
-**Important:** An OpenAI API key is required for AI-powered meeting notes generation. You can obtain an API key <a href="https://openai.com/blog/openai-api">here</a>.
+**Important:** A LiteLLM-compatible API key is required for AI-powered meeting notes generation. You can use:
+- OpenAI API key (obtain from <a href="https://openai.com/blog/openai-api">OpenAI</a>)
+- LM Studio (local LLM server - no API key required)
+- Any other LiteLLM-compatible provider
 
 ### Environment Configuration
 
 The application uses a `.env` file for configuration. Copy `.env.example` to `.env` and configure:
 
 ```bash
-# OpenAI API Configuration
-OPENAI_API_KEY=your_openai_api_key_here
+# LiteLLM API Configuration
+LITELLM_API_KEY=your_litellm_api_key_here
+LITELLM_BASE=https://api.openai.com/v1
 
 # Model Configuration
 GENERATIVE_MODEL=gpt-3.5-turbo
 
 # API Settings
 MAX_NUMBER_OF_RETRIES=3
-OPENAI_MODEL_TOKEN_LIMIT=950
+LITELLM_MODEL_TOKEN_LIMIT=950
+LITELLM_DEBUG=false
 
 # Processing Settings
 CLEANING_TOKEN_LIMIT=950
@@ -113,7 +118,8 @@ python takenotes.py --file myfile.txt
 - `--energy_threshold`: Microphone sensitivity level (default: 1000)
 - `--record_timeout`: Real-time recording sensitivity in seconds (default: 2.0)
 - `--phrase_timeout`: Silence duration before new transcription line (default: 3.0)
-- `--default_microphone`: (Linux only) Specify microphone device name
+- `--output`: Output directory for generated files (default: "output")
+- `--default_microphone`: (Linux only) Specify microphone device name or use "list" to see available devices
 
 ### Example Usage
 
@@ -126,6 +132,12 @@ python takenotes.py --file teams_meeting.txt --teams
 
 # Process a non-English transcript
 python takenotes.py --file meeting_es.txt --non_english
+
+# Specify custom output directory
+python takenotes.py --output my_meetings
+
+# List available microphones on Linux
+python takenotes.py --default_microphone list
 ```
 
 ## Features
@@ -146,6 +158,12 @@ When processing files (or transcripts with sufficient content), the application 
    - Attendee introductions with full names and titles
    - Humorous "Meeting Score" (1-100) evaluating meeting effectiveness
 
+### LLM Provider Support
+The application supports multiple LLM providers through LiteLLM:
+- **OpenAI**: GPT-3.5-turbo, GPT-4, and other OpenAI models
+- **LM Studio**: Local LLM hosting (no API key required)
+- **Other Providers**: Any LiteLLM-compatible API (Anthropic, Cohere, etc.)
+
 ### Microsoft Teams Support
 Special handling for Teams transcripts with:
 - Name format normalization ("Last, First (org)" → "First Last")
@@ -162,10 +180,10 @@ The application generates timestamped files:
 
 ### Architecture
 - **Speech Recognition**: OpenAI Whisper models with GPU acceleration support (including Apple Silicon MPS)
-- **Natural Language Processing**: OpenAI GPT-3.5-turbo for intelligent text processing via liteLLM
+- **Natural Language Processing**: LiteLLM integration for flexible LLM provider support
 - **Audio Processing**: SpeechRecognition library with configurable microphone settings
 - **Configuration Management**: Environment-based configuration using python-dotenv
-- **Modular Prompts**: Externalized prompt templates in `prompts/` directory
+- **Modular Prompts**: Externalized prompt templates in `prompts/` directory for different transcript types
 
 ### Supported Platforms
 - macOS (including Apple Silicon)
@@ -176,7 +194,7 @@ The application generates timestamped files:
 ```
 glorified_scribe/
 ├── takenotes.py              # Main application script
-├── module_nlp.py             # NLP processing module
+├── module_nlp.py             # NLP processing module with LiteLLM integration
 ├── requirements.txt          # Python dependencies
 ├── .env.example             # Environment configuration template
 ├── prompts/                 # LLM prompt templates
@@ -187,26 +205,33 @@ glorified_scribe/
 │   ├── classifier_command.txt
 │   ├── cleaning_command.txt
 │   └── summerization_command.txt
+├── output/                  # Generated transcript files
+│   ├── transcript-*.txt     # Raw transcriptions
+│   ├── cleaned-*.txt        # AI-cleaned transcripts
+│   └── summary-*.txt        # Meeting summaries
 └── README.md                # This file
 ```
 
-### Architecture Changes
+### Recent Architecture Changes
 
 The application has been recently updated with the following improvements:
 
 1. **Modular Prompts**: All LLM prompts are now stored in separate files in the `prompts/` directory for easier customization
-2. **Environment Configuration**: Uses `.env` file for all configuration variables
-3. **Unified LLM Interface**: Now uses `litellm` for better LLM provider flexibility
-4. **Improved Error Handling**: Better retry logic and error management
+2. **Environment Configuration**: Uses `.env` file for all configuration variables with debug support
+3. **Unified LLM Interface**: Now uses `litellm` for better LLM provider flexibility (OpenAI, LM Studio, etc.)
+4. **Improved Error Handling**: Better retry logic and error management with configurable retry limits
+5. **GPU Acceleration**: Enhanced support for Apple Silicon MPS and CUDA GPUs
+6. **Flexible Output**: Configurable output directory for generated files
+7. **Linux Microphone Support**: Better microphone device selection and listing capabilities
 
 ### Dependencies
 
 #### Python Packages
 - `openai`: OpenAI API integration
 - `openai-whisper`: Speech recognition models
-- `litellm`: Unified LLM API interface
+- `litellm`: Unified LLM API interface supporting multiple providers
 - `python-dotenv`: Environment variable management
-- `torch`: Deep learning framework
+- `torch`: Deep learning framework with MPS support for Apple Silicon
 - `transformers`: NLP model support
 - `SpeechRecognition`: Audio input handling
 - `sounddevice`: Audio device management
@@ -217,15 +242,6 @@ The application has been recently updated with the following improvements:
 - **FFmpeg**: Required for audio processing by Whisper
 - **PortAudio**: Required for PyAudio audio recording
 - **Python 3.7+**: Base Python runtime
-
-### Architecture Changes
-
-The application has been recently updated with the following improvements:
-
-1. **Modular Prompts**: All LLM prompts are now stored in separate files in the `prompts/` directory for easier customization
-2. **Environment Configuration**: Uses `.env` file for all configuration variables
-3. **Unified LLM Interface**: Now uses `litellm` for better LLM provider flexibility
-4. **Improved Error Handling**: Better retry logic and error management
 
 ## License
 Please see the <a href="LICENSE">LICENSE</a> file for details on how you can use and distribute this software.
