@@ -196,7 +196,6 @@ glorified_scribe/
 ├── takenotes.py              # Main application script
 ├── module_nlp.py             # NLP processing module with LiteLLM integration
 ├── requirements.txt          # Python dependencies
-├── .env.example             # Environment configuration template
 ├── prompts/                 # LLM prompt templates
 │   ├── cleaning_prompt_default.txt
 │   ├── cleaning_prompt_teams.txt
@@ -212,17 +211,7 @@ glorified_scribe/
 └── README.md                # This file
 ```
 
-### Recent Architecture Changes
 
-The application has been recently updated with the following improvements:
-
-1. **Modular Prompts**: All LLM prompts are now stored in separate files in the `prompts/` directory for easier customization
-2. **Environment Configuration**: Uses `.env` file for all configuration variables with debug support
-3. **Unified LLM Interface**: Now uses `litellm` for better LLM provider flexibility (OpenAI, LM Studio, etc.)
-4. **Improved Error Handling**: Better retry logic and error management with configurable retry limits
-5. **GPU Acceleration**: Enhanced support for Apple Silicon MPS and CUDA GPUs
-6. **Flexible Output**: Configurable output directory for generated files
-7. **Linux Microphone Support**: Better microphone device selection and listing capabilities
 
 ### Dependencies
 
